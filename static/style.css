@@ -181,16 +181,20 @@ h1, h2, h3 {
 /* === Header & Navigation === */
 .header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
+    flex-direction: column;
+    padding: 10px 20px 15px 20px;
     background: var(--yellow);
     border-bottom: 4px solid var(--text-main);
     box-shadow: 0px 4px 0px 0px var(--text-main);
-    min-height: 70px; /* Expandable */
     z-index: 10;
     gap: 15px;
-    flex-wrap: wrap;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
 .header-title {
@@ -205,7 +209,7 @@ h1, h2, h3 {
 
 .header-nav {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
     justify-content: center;
@@ -216,8 +220,8 @@ h1, h2, h3 {
     color: var(--text-main);
     font-family: var(--font-mono);
     font-weight: bold;
-    font-size: 14px;
-    padding: 8px 16px;
+    font-size: 13px;
+    padding: 6px 12px;
     border: 3px solid var(--text-main);
     background-color: var(--white);
     box-shadow: 3px 3px 0px 0px var(--text-main);
@@ -620,15 +624,11 @@ main {
   text-transform: uppercase;
 }
 
+
 /* Responsive Header Fixes */
-@media (max-width: 1400px) {
-  .header {
+@media (max-width: 900px) {
+  .header-top {
     flex-direction: column;
-    justify-content: center;
-    padding: 15px;
-  }
-  .header-two {
-    flex-wrap: wrap;
-    justify-content: center;
+    gap: 15px;
   }
 }
