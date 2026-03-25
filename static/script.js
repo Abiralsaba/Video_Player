@@ -31,6 +31,10 @@ const modalClose     = document.getElementById('modalClose');
    1. Connection
    ═══════════════════════════════════════════════ */
 
+// Initialization
+connectOverlay.style.display = 'flex';
+app.style.display = 'none';
+
 // Check localStorage for saved connection
 (function checkSaved() {
     const saved = localStorage.getItem('mf_server');
@@ -39,6 +43,8 @@ const modalClose     = document.getElementById('modalClose');
             const { ip, port } = JSON.parse(saved);
             ipInput.value = ip;
             portInput.value = port;
+            // Auto-connect instantly on refresh
+            attemptConnect();
         } catch (e) { /* ignore */ }
     }
 })();
@@ -76,7 +82,7 @@ async function attemptConnect() {
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         ALL_VIDEOS = await res.json();
 
-        // Save successful connection
+        // Save successful connection so it persists on refresh
         localStorage.setItem('mf_server', JSON.stringify({ ip, port }));
 
         // Transition to app

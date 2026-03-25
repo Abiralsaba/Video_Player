@@ -237,6 +237,7 @@ def main():
     global VIDEOS_DIR
 
     parser = argparse.ArgumentParser(description="Video Gallery Server")
+    parser.add_argument("port", type=int, nargs="?", default=DEFAULT_PORT, help="Port to run on (default: 3000)")
     parser.add_argument("--videos-dir", default=None, help=f"Videos directory (default: {VIDEOS_DIR})")
     args = parser.parse_args()
 
@@ -244,32 +245,26 @@ def main():
         VIDEOS_DIR = args.videos_dir
     os.makedirs(VIDEOS_DIR, exist_ok=True)
 
-    # Interactive prompts for IP and Port
-    print("=== Mission Feed Server Setup ===")
-    user_ip = input(f"Enter Server IP to bind [default {DEFAULT_HOST}]: ").strip()
-    if not user_ip:
-        user_ip = DEFAULT_HOST
-
-    user_port_str = input(f"Enter Port [default {DEFAULT_PORT}]: ").strip()
-    try:
-        user_port = int(user_port_str) if user_port_str else DEFAULT_PORT
-    except ValueError:
-        print("Invalid port. Using default 3000.")
-        user_port = DEFAULT_PORT
+    # Use defaults to start instantly in the background
+    user_ip = "0.0.0.0"
+    user_port = args.port
 
     class VideoServer(HTTPServer):
         allow_reuse_address = True
 
-    try:
-        server = VideoServer((user_ip, user_port), VideoHandler)
-    except OSError as e:
-        if e.errno == 49: # Can't assign requested address
-            print(f"\n[!] Cannot bind to {user_ip} (your computer doesn't have this IP address).")
-            print("[!] Falling back to 0.0.0.0 (all available interfaces)...\n")
-            user_ip = "0.0.0.0"
+    while True:
+        try:
             server = VideoServer((user_ip, user_port), VideoHandler)
-        else:
-            raise
+            break
+        except OSError as e:
+            if e.errno == 48: # Address already in use
+                print(f"[!] Port {user_port} is frozen in the background. Auto-switching to port {user_port + 1}...")
+                user_port += 1
+            elif e.errno == 49 and user_ip != "0.0.0.0": # Can't assign requested address
+                print(f"\n[!] Cannot bind to {user_ip}. Falling back to 0.0.0.0...")
+                user_ip = "0.0.0.0"
+            else:
+                raise
 
     count = len(scan_videos())
 
