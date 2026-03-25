@@ -7,8 +7,7 @@
     <title>Mission Feed — Video Gallery</title>
     <meta name="description" content="Browse, stream, and download mission feed recordings from your rover.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -18,15 +17,9 @@
     <div class="connect-overlay" id="connectOverlay">
         <div class="connect-dialog">
             <div class="connect-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#cg)" stroke-width="1.5"
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="var(--yellow)" stroke="var(--text-main)" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
-                    <defs>
-                        <linearGradient id="cg" x1="0" y1="0" x2="24" y2="24">
-                            <stop stop-color="#6c5ce7" />
-                            <stop offset="1" stop-color="#a855f7" />
-                        </linearGradient>
-                    </defs>
-                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <rect x="2" y="3" width="20" height="14" rx="0" />
                     <line x1="8" y1="21" x2="16" y2="21" />
                     <line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
@@ -63,14 +56,8 @@
         <!-- Header -->
         <header id="appHeader">
             <div class="logo">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#g1)" stroke-width="2"
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--text-main)" stroke="var(--text-main)" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
-                    <defs>
-                        <linearGradient id="g1" x1="0" y1="0" x2="24" y2="24">
-                            <stop stop-color="#6c5ce7" />
-                            <stop offset="1" stop-color="#a855f7" />
-                        </linearGradient>
-                    </defs>
                     <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
                 Mission Feed
