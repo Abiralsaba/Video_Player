@@ -15,6 +15,7 @@ import sys
 import json
 import argparse
 import mimetypes
+import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import unquote
 
@@ -55,12 +56,19 @@ def scan_videos():
     if not os.path.isdir(VIDEOS_DIR):
         return []
     videos = []
-    for f in sorted(os.listdir(VIDEOS_DIR)):
+    for f in sorted(os.listdir(VIDEOS_DIR), reverse=True):
         ext = os.path.splitext(f)[1].lower()
         if ext in SUPPORTED_EXTENSIONS:
             full = os.path.join(VIDEOS_DIR, f)
             if os.path.isfile(full):
-                videos.append({"name": f, "size": os.path.getsize(full)})
+                mtime = os.path.getmtime(full)
+                dt_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                videos.append({
+                    "name": f, 
+                    "size": os.path.getsize(full), 
+                    "date": dt_str,
+                    "timestamp": mtime
+                })
     return videos
 
 
@@ -87,13 +95,20 @@ class VideoHandler(BaseHTTPRequestHandler):
     # ── CORS headers for cross-origin frontend → backend ──
     def _send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS, DELETE")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Range")
 
     def do_OPTIONS(self):
         self.send_response(204)
         self._send_cors_headers()
         self.end_headers()
+
+    def do_DELETE(self):
+        path = self.path.split("?")[0]
+        if path.startswith("/api/video/"):
+            self._delete_video(unquote(path[len("/api/video/"):]))
+        else:
+            self.send_error(404, "Endpoint not found")
 
     def do_GET(self):
         path = self.path.split("?")[0]
@@ -171,6 +186,22 @@ class VideoHandler(BaseHTTPRequestHandler):
         self._send_cors_headers()
         self.end_headers()
         self._stream_file(filepath, start, length)
+
+    # ── API: delete a video ──
+    def _delete_video(self, name):
+        filepath = safe_video_path(name)
+        if not filepath:
+            self.send_error(404, "Video not found")
+            return
+        
+        try:
+            os.remove(filepath)
+            self.send_response(200)
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b"OK")
+        except OSError as e:
+            self.send_error(500, "Deletion failed")
 
     # ── API: download a video ──
     def _serve_download(self, name):

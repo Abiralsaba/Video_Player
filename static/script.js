@@ -17,9 +17,9 @@ const app            = document.getElementById('app');
 const loading        = document.getElementById('loading');
 const grid           = document.getElementById('videoGrid');
 const countEl        = document.getElementById('videoCount');
-const searchInput    = document.getElementById('searchInput');
 const serverLabel    = document.getElementById('serverLabel');
 const disconnectBtn  = document.getElementById('disconnectBtn');
+const connectionStatusUI = document.getElementById('connectionStatusUI');
 
 const modal          = document.getElementById('modal');
 const modalVideo     = document.getElementById('modalVideo');
@@ -88,9 +88,10 @@ async function attemptConnect() {
         // Transition to app
         connectOverlay.style.display = 'none';
         app.style.display = 'block';
+        connectionStatusUI.style.display = 'flex';
         loading.style.display = 'none';
         serverLabel.textContent = `${ip}:${port}`;
-        renderCards(ALL_VIDEOS);
+        applyFilter();
     } catch (err) {
         let msg = 'Could not connect to server.';
         if (err.name === 'TimeoutError') msg = 'Connection timed out — is the server running?';
@@ -115,10 +116,10 @@ disconnectBtn.addEventListener('click', () => {
     SERVER_BASE = '';
     ALL_VIDEOS = [];
     app.style.display = 'none';
+    connectionStatusUI.style.display = 'none';
     connectOverlay.style.display = 'flex';
     connectError.textContent = '';
     grid.innerHTML = '';
-    searchInput.value = '';
 });
 
 
@@ -186,19 +187,20 @@ function renderCards(videos) {
                     <span>${ext}</span>
                     <span>•</span>
                     <span>${formatSize(v.size)}</span>
+                    ${v.date ? `<span>•</span><span>${v.date}</span>` : ''}
                 </div>
                 <div class="btn-row">
                     <button class="btn btn-play" onclick="openPlayer('${encoded}', '${safeTitle}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21"/></svg>
                         Play
                     </button>
-                    <button class="btn btn-download" onclick="downloadVideo(event, '${encoded}', '${safeName}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Download
+                    <a class="btn btn-download" href="${SERVER_BASE}/api/download/${encoded}" download="${v.name}" target="_blank">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Save
+                    </a>
+                    <button class="btn btn-delete" onclick="deleteVideo('${encoded}', '${safeTitle}')" title="Delete Video">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        Del
                     </button>
                 </div>
             </div>
@@ -208,49 +210,67 @@ function renderCards(videos) {
 
 
 /* ═══════════════════════════════════════════════
-   4. Search
+   4. Time Filters
    ═══════════════════════════════════════════════ */
 
-searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase().trim();
-    const filtered = q ? ALL_VIDEOS.filter(v => v.name.toLowerCase().includes(q)) : ALL_VIDEOS;
-    renderCards(filtered);
+let currentFilter = 'all';
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Toggle active visual class
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        currentFilter = btn.getAttribute('data-filter');
+        applyFilter();
+    });
 });
 
+function applyFilter() {
+    if (!ALL_VIDEOS) return;
+
+    if (currentFilter === 'all') {
+        renderCards(ALL_VIDEOS);
+        return;
+    }
+
+    const nowMs = Date.now();
+    const filtered = ALL_VIDEOS.filter(v => {
+        if (!v.timestamp) return true; // fallback if no timestamp
+        const vMs = v.timestamp * 1000; // PHP/Python unix timestamp to JS millisecond
+        const diffHours = (nowMs - vMs) / (1000 * 60 * 60);
+
+        if (currentFilter === 'hour') {
+            return diffHours <= 1;
+        } else if (currentFilter === 'day') {
+            return diffHours <= 24;
+        }
+        return true;
+    });
+
+    renderCards(filtered);
+}
 
 /* ═══════════════════════════════════════════════
-   5. Download
+   5. Delete Video
    ═══════════════════════════════════════════════ */
 
-function downloadVideo(evt, encodedName, originalName) {
-    const btn = evt.currentTarget;
-    const origHTML = btn.innerHTML;
-    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Downloading…';
-    btn.disabled = true;
+async function deleteVideo(filename, title) {
+    if (!confirm(`Are you absolutely sure you want to permanently delete:\n\n${title}\n\nThis cannot be undone!`)) {
+        return;
+    }
 
-    fetch(`${SERVER_BASE}/api/download/${encodedName}`)
-        .then(res => {
-            if (!res.ok) throw new Error('Server returned ' + res.status);
-            return res.blob();
-        })
-        .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = originalName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            btn.innerHTML = origHTML;
-            btn.disabled = false;
-        })
-        .catch(err => {
-            console.error('Download failed:', err);
-            btn.innerHTML = origHTML;
-            btn.disabled = false;
-            alert('Download failed: ' + err.message);
+    try {
+        const response = await fetch(`${SERVER_BASE}/api/video/${filename}`, {
+            method: 'DELETE'
         });
+        if (!response.ok) throw new Error('Failed to delete video on the server');
+        
+        // Re-fetch videos from server automatically to refresh grid
+        attemptConnect();
+    } catch (err) {
+        alert('Delete Exception: ' + err.message);
+    }
 }
 
 
